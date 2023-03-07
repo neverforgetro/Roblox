@@ -1,3 +1,4 @@
+-- Local Script
 local folder = game.Workspace.QuestMap.Dummies -- create a folder named "Dummies" in Workspace to store the clones
 local dummyTemplate = game.ReplicatedStorage["Quest System"].Dummy -- create a template for the dummy instance
 local spawnPos = Vector3.new(2085.125, 347.422, -1515.218) -- set the spawn position for the dummies
@@ -96,3 +97,160 @@ while true do
 	end
 	wait(1) -- wait for 1 second before checking again
 end
+
+
+--Server Side 
+
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local questDataStore = DataStoreService:GetDataStore("questData")
+
+local remoteEvent = game:GetService("ReplicatedStorage")["Quest System"]:WaitForChild("Schimbare")
+local remoteEvent2 = game:GetService("ReplicatedStorage")["Quest System"]:WaitForChild("Adaugare")
+local ShowQuestUI = game:GetService("ReplicatedStorage")["Quest System"].Events:WaitForChild("ShowQuestUI")
+
+local function onPlayerAdded(player)
+	
+	local playerFolder = Instance.new("Folder", game.ReplicatedStorage["Quest System"].PlayersData)
+	playerFolder.Name = player.Name
+	
+	local QuestProgress = Instance.new("IntValue")
+	QuestProgress.Name = "QuestProgress"
+	QuestProgress.Parent = playerFolder
+	
+	local QuestTargetName = Instance.new("StringValue")
+	QuestTargetName.Name = "QuestTargetName"
+	QuestTargetName.Parent = playerFolder
+	
+	local QuestTargetNumber = Instance.new("IntValue")
+	QuestTargetNumber.Name = "QuestTargetNumber"
+	QuestTargetNumber.Parent = playerFolder
+	
+	local QuestReward = Instance.new("IntValue")
+	QuestReward.Name = "QuestReward"
+	QuestReward.Parent = playerFolder
+	
+	local questData = questDataStore:GetAsync(player.Name)
+	if questData then
+		if questData.questTargetName == "NoQuest" then
+			ShowQuestUI:FireClient(player, false)
+		else
+			ShowQuestUI:FireClient(player, true, "Quest", questData.questReward, "Kill "..questData.questTargetNumber.." "..questData.questTargetName.."", questData.questTargetNumber, questData.questProgress)
+		end
+		if questData.questProgress == nil then
+			local questData = {
+				questTargetName = "NoQuest", 
+				questTargetNumber = 0, 
+				questProgress = 0,
+				questReward = 0
+			}
+
+			questDataStore:SetAsync(player, questData)
+			QuestTargetNumber.Value = 0
+			QuestTargetName.Value = "NoQuest"
+			QuestProgress.Value = 0
+			QuestReward.Value = 0
+		else
+			QuestProgress.Value = questData.questProgress
+		end
+		if questData.questTargetName == nil then
+			local questData = {
+				questTargetName = "NoQuest", 
+				questTargetNumber = 0, 
+				questProgress = 0,
+				questReward = 0
+			}
+
+			questDataStore:SetAsync(player, questData)
+			QuestTargetNumber.Value = 0
+			QuestTargetName.Value = "NoQuest"
+			QuestProgress.Value = 0
+			QuestReward.Value = 0
+		else
+			QuestTargetName.Value = questData.questTargetName
+		end
+		if questData.questTargetNumber == nil then
+			local questData = {
+				questTargetName = "NoQuest", 
+				questTargetNumber = 0, 
+				questProgress = 0,
+				questReward = 0
+			}
+
+			questDataStore:SetAsync(player, questData)
+			QuestTargetNumber.Value = 0
+			QuestTargetName.Value = "NoQuest"
+			QuestProgress.Value = 0
+			QuestReward.Value = 0
+		else
+			QuestTargetNumber.Value = questData.questTargetNumber
+		end
+		if questData.questReward == nil then
+			local questData = {
+				questTargetName = "NoQuest", 
+				questTargetNumber = 0, 
+				questProgress = 0,
+				questReward = 0
+			}
+
+			questDataStore:SetAsync(player, questData)
+			QuestTargetNumber.Value = 0
+			QuestTargetName.Value = "NoQuest"
+			QuestProgress.Value = 0
+			QuestReward.Value = 0
+		else
+			QuestReward.Value = questData.questReward
+		end
+	end
+end
+
+local function onPlayerRemoving(player)
+	local playersFolder = game.ReplicatedStorage["Quest System"].PlayersData:FindFirstChild(player.Name)
+	
+	local questTargetName1 = playersFolder:FindFirstChild("QuestTargetName").Value
+	local questTargetNumber1 = playersFolder:FindFirstChild("QuestTargetNumber").Value
+	local questProgress1 = playersFolder:FindFirstChild("QuestProgress").Value
+	local questReward1 = playersFolder:FindFirstChild("QuestReward").Value
+	local questData = {
+		questTargetName = questTargetName1, 
+		questTargetNumber = questTargetNumber1, 
+		questProgress = questProgress1,
+		questReward = questReward1
+	}
+
+	questDataStore:SetAsync(player.Name, questData)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+local function schimbare(player, playersFolder, QuestProgress, QuestTargetName)
+	
+	playersFolder:FindFirstChild("QuestProgress").Value = QuestProgress
+	
+	local questTargetNumberValue = playersFolder:FindFirstChild("QuestTargetNumber").Value
+	local questTargetNameValue = playersFolder:FindFirstChild("QuestTargetName").Value
+	local questReward = playersFolder:FindFirstChild("QuestReward").Value
+	
+	if QuestProgress >= questTargetNumberValue then
+		player.leaderstats.Cash.Value = player.leaderstats.Cash.Value + questReward
+		
+		playersFolder:FindFirstChild("QuestTargetName").Value = "NoQuest"
+		playersFolder:FindFirstChild("QuestTargetNumber").Value = 0
+		playersFolder:FindFirstChild("QuestProgress").Value = QuestProgress
+		playersFolder:FindFirstChild("QuestReward").Value = 0
+	end
+end
+
+function adaugare(player, playersFolder, questTarget,questNumber,questProgress,questReward)
+	playersFolder:FindFirstChild("QuestTargetName").Value = questTarget
+	playersFolder:FindFirstChild("QuestTargetNumber").Value = questNumber
+	playersFolder:FindFirstChild("QuestProgress").Value = questProgress
+	playersFolder:FindFirstChild("QuestReward").Value = questReward
+end
+
+remoteEvent.OnServerEvent:Connect(schimbare)
+remoteEvent2.OnServerEvent:Connect(adaugare)
+
+
